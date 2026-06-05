@@ -35,6 +35,7 @@ targets:
   SuperSpyGuardWidget:
     type: app-extension
     platform: iOS
+    deploymentTarget: "17.0"
     sources:
       - path: SuperSpyGuardWidget
     settings:
