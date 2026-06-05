@@ -1,0 +1,25 @@
+name: SuperSpyGuard
+options:
+  bundleIdPrefix: com.tokyonasu
+  deploymentTarget:
+    iOS: "16.0"
+
+targets:
+  SuperSpyGuard:
+    type: application
+    platform: iOS
+    sources:
+      - path: SuperSpyGuard
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tokyonasu.SuperSpyGuard
+        MARKETING_VERSION: 1.0
+        CURRENT_PROJECT_VERSION: 1
+        DEVELOPMENT_TEAM: 83VGKGSQUH
+        SWIFT_VERSION: 5.9
+        INFOPLIST_FILE: SuperSpyGuard/Info.plist
+    capabilities:
+      backgroundModes:
+        modes:
+          - fetch
+          - processing
