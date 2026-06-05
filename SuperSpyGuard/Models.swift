@@ -11,6 +11,7 @@ enum ScanPhase: Int, CaseIterable {
     case microphone = 4
     case ultrasonic = 5
     case light = 6
+    case lens = 7
 
     var name: String {
         switch self {
@@ -21,6 +22,7 @@ enum ScanPhase: Int, CaseIterable {
         case .microphone:  return "マイク盗聴検出"
         case .ultrasonic:  return "超音波スキャン"
         case .light:       return "光源スキャン"
+        case .lens:        return "AIレンズ検出"
         }
     }
 
@@ -33,6 +35,7 @@ enum ScanPhase: Int, CaseIterable {
         case .microphone:  return "マイク"
         case .ultrasonic:  return "超音波"
         case .light:       return "光源"
+        case .lens:        return "AIレンズ"
         }
     }
 
@@ -45,6 +48,7 @@ enum ScanPhase: Int, CaseIterable {
         case .microphone:  return "mic.circle.fill"
         case .ultrasonic:  return "waveform.badge.exclamationmark"
         case .light:       return "lightbulb.circle.fill"
+        case .lens:        return "camera.circle.fill"
         }
     }
 
@@ -57,6 +61,7 @@ enum ScanPhase: Int, CaseIterable {
         case .microphone:  return AppTheme.neonOrange
         case .ultrasonic:  return AppTheme.neonPurple
         case .light:       return AppTheme.neonYellow
+        case .lens:        return Color(red: 0.0, green: 0.9, blue: 0.9)
         }
     }
 
@@ -69,6 +74,7 @@ enum ScanPhase: Int, CaseIterable {
         case .microphone:  return "音響異常・盗聴器を検出中..."
         case .ultrasonic:  return "超音波信号を解析中..."
         case .light:       return "不審な光源を検出中..."
+        case .lens:        return "AIがレンズ反射パターンを解析中..."
         }
     }
 }

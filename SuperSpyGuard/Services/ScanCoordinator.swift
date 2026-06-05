@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import CoreLocation
+import WidgetKit
 
 @MainActor
 class ScanCoordinator: NSObject, ObservableObject {
@@ -20,6 +21,7 @@ class ScanCoordinator: NSObject, ObservableObject {
     let microphoneScanner = MicrophoneScanner()
     let ultrasonicScanner = UltrasonicScanner()
     let lightScanner = LightScanner()
+    let lensDetector = LensDetector()
 
     private var scanTask: Task<Void, Never>?
     private let locationManager = CLLocationManager()
@@ -56,6 +58,7 @@ class ScanCoordinator: NSObject, ObservableObject {
                 await runPhase(phase)
             }
             appState = .results
+            saveWidgetData()
         }
     }
 
@@ -79,6 +82,7 @@ class ScanCoordinator: NSObject, ObservableObject {
             micActive = false
         }
         lightScanner.stop()
+        lensDetector.stop()
     }
 
     private func runPhase(_ phase: ScanPhase) async {
@@ -97,6 +101,9 @@ class ScanCoordinator: NSObject, ObservableObject {
             if !micActive { ultrasonicScanner.start(); micActive = true }
         case .light:
             lightScanner.start()
+            showCamera = true
+        case .lens:
+            lensDetector.start()
             showCamera = true
         }
 
@@ -139,12 +146,36 @@ class ScanCoordinator: NSObject, ObservableObject {
             lightScanner.stop()
             showCamera = false
             detectedItems.append(contentsOf: lightScanner.getResults())
+        case .lens:
+            lensDetector.stop()
+            showCamera = false
+            detectedItems.append(contentsOf: lensDetector.getResults())
         }
     }
 
     func makeSession(notes: String = "") -> ScanSession {
         ScanSession(id: UUID(), date: Date(), items: detectedItems,
                     locationLabel: locationLabel, notes: notes)
+    }
+
+    func saveWidgetData() {
+        struct WidgetSyncData: Codable {
+            let lastScanDate: Date
+            let threatLevel: Int
+            let threatCount: Int
+            let locationLabel: String
+        }
+        let data = WidgetSyncData(
+            lastScanDate: Date(),
+            threatLevel: overallThreatLevel.rawValue,
+            threatCount: detectedItems.filter { $0.threatLevel >= .medium }.count,
+            locationLabel: locationLabel
+        )
+        if let encoded = try? JSONEncoder().encode(data) {
+            let defaults = UserDefaults(suiteName: "group.com.tokyonasu.SuperSpyGuard") ?? .standard
+            defaults.set(encoded, forKey: "widgetData")
+        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 
