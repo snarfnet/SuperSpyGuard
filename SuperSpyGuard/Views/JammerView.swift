@@ -7,85 +7,87 @@ struct JammerView: View {
         ZStack {
             AppTheme.background.ignoresSafeArea()
 
-            VStack(spacing: 28) {
-                Text("白色雑音ジャマー")
-                    .font(.system(size: 22, weight: .bold, design: .monospaced))
-                    .foregroundStyle(AppTheme.neonGreen)
+            ScrollView {
+                VStack(spacing: 28) {
+                    Text("白色雑音ジャマー")
+                        .font(.system(size: 22, weight: .bold, design: .monospaced))
+                        .foregroundStyle(AppTheme.neonGreen)
 
-                Text("ホワイトノイズで盗聴器の音声を妨害します")
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .multilineTextAlignment(.center)
+                    Text("ホワイトノイズで盗聴器の音声を妨害します")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .multilineTextAlignment(.center)
 
-                // Waveform indicator
-                WaveformView(isActive: player.isPlaying)
-                    .frame(height: 60)
-                    .padding(.vertical, 8)
+                    // Waveform indicator
+                    WaveformView(isActive: player.isPlaying)
+                        .frame(height: 60)
+                        .padding(.vertical, 8)
 
-                // Play / Stop button
-                Button {
-                    player.toggle()
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(player.isPlaying ? AppTheme.neonRed.opacity(0.2) : AppTheme.neonGreen.opacity(0.2))
-                            .frame(width: 100, height: 100)
-                            .overlay(
-                                Circle().stroke(player.isPlaying ? AppTheme.neonRed : AppTheme.neonGreen, lineWidth: 2)
-                            )
-                        Image(systemName: player.isPlaying ? "stop.fill" : "play.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(player.isPlaying ? AppTheme.neonRed : AppTheme.neonGreen)
-                    }
-                }
-
-                // Noise type picker
-                VStack(spacing: 10) {
-                    Text("ノイズタイプ")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
-
-                    Picker("", selection: $player.noiseType) {
-                        ForEach(WhiteNoisePlayer.NoiseType.allCases, id: \.self) { t in
-                            Text(t.rawValue).tag(t)
+                    // Play / Stop button
+                    Button {
+                        player.toggle()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(player.isPlaying ? AppTheme.neonRed.opacity(0.2) : AppTheme.neonGreen.opacity(0.2))
+                                .frame(width: 100, height: 100)
+                                .overlay(
+                                    Circle().stroke(player.isPlaying ? AppTheme.neonRed : AppTheme.neonGreen, lineWidth: 2)
+                                )
+                            Image(systemName: player.isPlaying ? "stop.fill" : "play.fill")
+                                .font(.system(size: 36))
+                                .foregroundStyle(player.isPlaying ? AppTheme.neonRed : AppTheme.neonGreen)
                         }
                     }
-                    .pickerStyle(.segmented)
-                    .tint(AppTheme.neonGreen)
-                    .onChange(of: player.noiseType) { _, _ in
-                        if player.isPlaying { player.play() }
-                    }
-                }
-                .padding(.horizontal, 24)
+                    .buttonStyle(.plain)
 
-                // Volume slider
-                VStack(spacing: 8) {
-                    HStack {
-                        Text("音量")
+                    // Noise type picker
+                    VStack(spacing: 10) {
+                        Text("ノイズタイプ")
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(.white.opacity(0.5))
-                        Spacer()
-                        Text("\(Int(player.volume * 100))%")
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(AppTheme.neonGreen)
+
+                        Picker("", selection: $player.noiseType) {
+                            ForEach(WhiteNoisePlayer.NoiseType.allCases, id: \.self) { t in
+                                Text(t.rawValue).tag(t)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .tint(AppTheme.neonGreen)
+                        .onChange(of: player.noiseType) { _ in
+                            if player.isPlaying { player.play() }
+                        }
                     }
-                    Slider(value: $player.volume, in: 0...1) { _ in
-                        player.updateVolume(player.volume)
+                    .padding(.horizontal, 24)
+
+                    // Volume slider
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("音量")
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.5))
+                            Spacer()
+                            Text("\(Int(player.volume * 100))%")
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundStyle(AppTheme.neonGreen)
+                        }
+                        Slider(value: $player.volume, in: 0...1) { _ in
+                            player.updateVolume(player.volume)
+                        }
+                        .tint(AppTheme.neonGreen)
                     }
-                    .tint(AppTheme.neonGreen)
+                    .padding(.horizontal, 24)
+
+                    // Info card
+                    InfoCard(
+                        icon: "info.circle",
+                        text: "ホテルや更衣室などで起動すると、盗聴器が拾う音声にノイズを混入させます。バックグラウンドでも動作します。"
+                    )
+                    .padding(.horizontal, 16)
                 }
-                .padding(.horizontal, 24)
-
-                // Info card
-                InfoCard(
-                    icon: "info.circle",
-                    text: "ホテルや更衣室などで起動すると、盗聴器が拾う音声にノイズを混入させます。バックグラウンドでも動作します。"
-                )
-                .padding(.horizontal, 16)
-
-                Spacer()
+                .padding(.top, 24)
+                .padding(.bottom, 24)
             }
-            .padding(.top, 24)
         }
         .navigationTitle("ジャマー")
         .navigationBarTitleDisplayMode(.inline)

@@ -51,7 +51,7 @@ struct ScanView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(AppTheme.textSecondary)
 
-                Text("7つのセンサーで盗撮・盗聴器を徹底検出")
+                Text("8つのセンサーで盗撮・盗聴器を徹底検出")
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -242,10 +242,26 @@ struct IRCameraView: UIViewRepresentable {
         session.addInput(input)
         let preview = AVCaptureVideoPreviewLayer(session: session)
         preview.videoGravity = .resizeAspectFill
-        preview.frame = UIScreen.main.bounds
         view.layer.addSublayer(preview)
+        context.coordinator.session = session
+        context.coordinator.previewLayer = preview
         DispatchQueue.global(qos: .userInitiated).async { session.startRunning() }
         return view
     }
-    func updateUIView(_ uiView: UIView, context: Context) {}
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.previewLayer?.frame = uiView.bounds
+    }
+
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        coordinator.session?.stopRunning()
+        coordinator.session = nil
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    class Coordinator {
+        var session: AVCaptureSession?
+        var previewLayer: AVCaptureVideoPreviewLayer?
+    }
 }

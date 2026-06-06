@@ -40,33 +40,99 @@ struct ToolsMenuView: View {
         ZStack {
             AppTheme.background.ignoresSafeArea()
 
-            VStack(spacing: 16) {
-                NavigationLink {
-                    JammerView()
-                } label: {
-                    ToolCard(
-                        icon: "waveform",
-                        title: "白色雑音ジャマー",
-                        subtitle: "ホワイトノイズで盗聴を妨害",
-                        color: AppTheme.neonGreen
-                    )
-                }
+            ScrollView {
+                VStack(spacing: 12) {
+                    NavigationLink {
+                        JammerView()
+                    } label: {
+                        ToolCard(
+                            icon: "waveform",
+                            title: "白色雑音ジャマー",
+                            subtitle: "ホワイトノイズで盗聴を妨害",
+                            color: AppTheme.neonGreen
+                        )
+                    }
 
-                NavigationLink {
-                    NetworkDetailView()
-                } label: {
-                    ToolCard(
-                        icon: "network",
-                        title: "ネットワーク詳細分析",
-                        subtitle: "Wi-Fi・BLEデバイスを詳細スキャン",
-                        color: AppTheme.neonCyan
-                    )
-                }
+                    NavigationLink {
+                        NetworkDetailView()
+                    } label: {
+                        ToolCard(
+                            icon: "network",
+                            title: "ネットワーク詳細分析",
+                            subtitle: "Wi-Fi・BLEデバイスを詳細スキャン",
+                            color: AppTheme.neonCyan
+                        )
+                    }
 
-                Spacer()
+                    NavigationLink {
+                        FlashReflectionView()
+                    } label: {
+                        ToolCard(
+                            icon: "flashlight.on.fill",
+                            title: "フラッシュ反射検出",
+                            subtitle: "点滅でカメラレンズの反射光を発見",
+                            color: AppTheme.neonYellow
+                        )
+                    }
+
+                    NavigationLink {
+                        SpectrumAnalyzerView()
+                    } label: {
+                        ToolCard(
+                            icon: "waveform.path.ecg",
+                            title: "スペクトラム分析",
+                            subtitle: "音響スペクトルで電子ノイズを可視化",
+                            color: AppTheme.neonPurple
+                        )
+                    }
+
+                    NavigationLink {
+                        BugTransmissionTestView()
+                    } label: {
+                        ToolCard(
+                            icon: "speaker.wave.3.fill",
+                            title: "盗聴器発信テスト",
+                            subtitle: "テスト音で盗聴器の再発信を検出",
+                            color: AppTheme.neonOrange
+                        )
+                    }
+
+                    NavigationLink {
+                        HotelGuideView()
+                    } label: {
+                        ToolCard(
+                            icon: "building.2.fill",
+                            title: "ホテル安全ガイド",
+                            subtitle: "部屋をステップバイステップで確認",
+                            color: AppTheme.gold
+                        )
+                    }
+
+                    NavigationLink {
+                        TrackerDetectorView()
+                    } label: {
+                        ToolCard(
+                            icon: "antenna.radiowaves.left.and.right",
+                            title: "追跡デバイス検出",
+                            subtitle: "AirTag・Tile等の追跡を検知",
+                            color: AppTheme.neonCyan
+                        )
+                    }
+
+                    NavigationLink {
+                        SpyDeviceCatalogView()
+                    } label: {
+                        ToolCard(
+                            icon: "book.closed.fill",
+                            title: "スパイデバイス図鑑",
+                            subtitle: "盗撮・盗聴デバイスの見分け方",
+                            color: AppTheme.neonRed
+                        )
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
         }
         .navigationTitle("ツール")
         .navigationBarTitleDisplayMode(.inline)

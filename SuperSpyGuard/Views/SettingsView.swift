@@ -44,7 +44,7 @@ struct SettingsView: View {
                     Section {
                         LabeledContent("バージョン", value: "1.0")
                             .foregroundStyle(AppTheme.textPrimary)
-                        LabeledContent("検出フェーズ数", value: "7")
+                        LabeledContent("検出フェーズ数", value: "8")
                             .foregroundStyle(AppTheme.textPrimary)
 
                         Link(destination: URL(string: "https://snarfnet.github.io/superspyguard/privacy")!) {
