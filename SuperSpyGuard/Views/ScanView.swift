@@ -1,5 +1,5 @@
 import SwiftUI
-import AVFoundation
+@preconcurrency import AVFoundation
 
 struct ScanView: View {
     @EnvironmentObject private var coordinator: ScanCoordinator

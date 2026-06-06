@@ -1,5 +1,5 @@
 import Foundation
-import AVFoundation
+@preconcurrency import AVFoundation
 
 @MainActor
 class MicrophoneScanner: ObservableObject {

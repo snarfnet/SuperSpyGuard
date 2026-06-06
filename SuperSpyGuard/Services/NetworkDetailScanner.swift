@@ -1,6 +1,6 @@
 import Foundation
 import Network
-import CoreBluetooth
+@preconcurrency import CoreBluetooth
 import Darwin
 
 struct NetworkDevice: Identifiable {

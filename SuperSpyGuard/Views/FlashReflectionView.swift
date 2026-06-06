@@ -1,5 +1,5 @@
 import SwiftUI
-import AVFoundation
+@preconcurrency import AVFoundation
 
 struct FlashReflectionView: View {
     @StateObject private var detector = FlashReflectionDetector()

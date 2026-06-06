@@ -1,5 +1,5 @@
 import Foundation
-import CoreBluetooth
+@preconcurrency import CoreBluetooth
 
 @MainActor
 class BluetoothScanner: NSObject, ObservableObject {
