@@ -271,7 +271,6 @@ jobs:
               "matureOrSuggestiveThemes": "NONE",
               "medicalOrTreatmentInformation": "NONE",
               "profanityOrCrudeHumor": "NONE",
-              "seventeenPlus": False,
               "sexualContentGraphicAndNudity": "NONE",
               "sexualContentOrNudity": "NONE",
               "unrestrictedWebAccess": False,
