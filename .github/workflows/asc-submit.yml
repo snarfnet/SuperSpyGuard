@@ -10,6 +10,62 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Select Xcode
+        run: |
+          XCODE_APP=$(ls /Applications/ | grep -E "^Xcode_2[6-9]|^Xcode_[3-9][0-9]" | sort -V | tail -1)
+          if [ -n "$XCODE_APP" ]; then sudo xcode-select -s "/Applications/$XCODE_APP"
+          else XCODE_APP=$(ls /Applications/ | grep "^Xcode_" | sort -V | tail -1); sudo xcode-select -s "/Applications/$XCODE_APP"; fi
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Capture App Store screenshots
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          xcodebuild build \
+            -scheme SuperSpyGuard \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO
+
+          APP_PATH="build/DerivedData/Build/Products/Debug-iphonesimulator/SuperSpyGuard.app"
+          RUNTIME=$(xcrun simctl list runtimes | grep -Eo 'com.apple.CoreSimulator.SimRuntime.iOS-[0-9-]+' | tail -1)
+          mkdir -p screenshots
+
+          pick_type() {
+            for name in "$@"; do
+              id=$(xcrun simctl list devicetypes | grep "$name" | head -1 | sed -E 's/.*\(([^()]*)\)$/\1/')
+              if [ -n "$id" ]; then echo "$id"; return 0; fi
+            done
+            return 1
+          }
+
+          IPHONE_TYPE=$(pick_type "iPhone 11 Pro Max" "iPhone XS Max" "iPhone 14 Plus" "iPhone 15 Plus")
+          IPAD_TYPE=$(pick_type "iPad Pro (12.9-inch) (3rd generation)" "iPad Pro (12.9-inch) (4th generation)" "iPad Pro (12.9-inch) (6th generation)")
+
+          capture_one() {
+            local name="$1"
+            local type="$2"
+            local out="$3"
+            local udid
+            udid=$(xcrun simctl create "$name" "$type" "$RUNTIME")
+            xcrun simctl boot "$udid"
+            xcrun simctl bootstatus "$udid" -b
+            xcrun simctl install "$udid" "$APP_PATH"
+            xcrun simctl launch "$udid" com.tokyonasu.SuperSpyGuard
+            sleep 8
+            xcrun simctl io "$udid" screenshot "$out"
+            xcrun simctl shutdown "$udid"
+            xcrun simctl delete "$udid"
+            file "$out"
+          }
+
+          capture_one "SuperSpyGuard-iPhone65" "$IPHONE_TYPE" screenshots/iphone65.png
+          capture_one "SuperSpyGuard-iPad129" "$IPAD_TYPE" screenshots/ipad129.png
+
       - name: Prepare and submit App Store version
         env:
           ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
@@ -18,8 +74,10 @@ jobs:
           .venv/bin/pip install pyjwt requests cryptography -q
           .venv/bin/python <<'PY'
           import base64
+          import hashlib
           import json
           import os
+          from pathlib import Path
           import time
 
           import jwt
@@ -27,6 +85,7 @@ jobs:
 
           APP_ID = "6777088642"
           VERSION_ID = "7fa5b5b8-eb84-49ca-9e63-7b88fb89554a"
+          LOCALIZATION_ID = "96a5d76b-55ed-40a5-ae4e-a02db1062454"
           BUILD_ID = "29daf476-c0fd-4533-b09e-9dff1cb78815"
           JPN_500_PRICE_POINT_ID = "eyJzIjoiNjc3NzA4ODY0MiIsInQiOiJKUE4iLCJwIjoiMTAwNDYifQ"
           KEY_ID = "WDXGY9WX55"
@@ -62,6 +121,74 @@ jobs:
                   return r.json()
               return {}
 
+          def get(path, params=None, ok=(200,)):
+              url = "https://api.appstoreconnect.apple.com" + path
+              r = session.get(url, params=params, timeout=30)
+              print(f"\nGET {path} -> {r.status_code}")
+              if r.text:
+                  print(r.text[:2000])
+              if r.status_code not in ok:
+                  raise SystemExit(1)
+              return r.json() if r.text else {}
+
+          def upload_screenshot(display_type, file_path):
+              payload = get(
+                  f"/v1/appStoreVersionLocalizations/{LOCALIZATION_ID}/appScreenshotSets",
+                  {"limit": "50", "fields[appScreenshotSets]": "screenshotDisplayType"},
+              )
+              set_id = None
+              for item in payload.get("data", []):
+                  if item.get("attributes", {}).get("screenshotDisplayType") == display_type:
+                      set_id = item["id"]
+                      break
+              if not set_id:
+                  created = request("POST", "/v1/appScreenshotSets", {
+                      "data": {
+                          "type": "appScreenshotSets",
+                          "attributes": {"screenshotDisplayType": display_type},
+                          "relationships": {
+                              "appStoreVersionLocalization": {
+                                  "data": {"type": "appStoreVersionLocalizations", "id": LOCALIZATION_ID}
+                              }
+                          },
+                      }
+                  }, ok=(201,))
+                  set_id = created["data"]["id"]
+
+              path = Path(file_path)
+              data = path.read_bytes()
+              reservation = request("POST", "/v1/appScreenshots", {
+                  "data": {
+                      "type": "appScreenshots",
+                      "attributes": {"fileName": path.name, "fileSize": len(data)},
+                      "relationships": {
+                          "appScreenshotSet": {
+                              "data": {"type": "appScreenshotSets", "id": set_id}
+                          }
+                      },
+                  }
+              }, ok=(201,))
+              screenshot_id = reservation["data"]["id"]
+              operations = reservation["data"]["attributes"]["uploadOperations"]
+              for op in operations:
+                  chunk = data[op["offset"]:op["offset"] + op["length"]]
+                  headers = {h["name"]: h["value"] for h in op.get("requestHeaders", [])}
+                  upload = requests.request(op["method"], op["url"], headers=headers, data=chunk, timeout=60)
+                  print(f"Upload {display_type} part -> {upload.status_code}")
+                  if upload.status_code >= 300:
+                      print(upload.text[:1000])
+                      raise SystemExit(1)
+              request("PATCH", f"/v1/appScreenshots/{screenshot_id}", {
+                  "data": {
+                      "type": "appScreenshots",
+                      "id": screenshot_id,
+                      "attributes": {
+                          "uploaded": True,
+                          "sourceFileChecksum": hashlib.md5(data).hexdigest(),
+                      },
+                  }
+              })
+
           print("Attach build 107 to version 1.0")
           request("PATCH", f"/v1/appStoreVersions/{VERSION_ID}/relationships/build", {
               "data": {"type": "builds", "id": BUILD_ID}
@@ -89,6 +216,80 @@ jobs:
                   },
               }
           })
+
+          print("Set build export compliance")
+          request("PATCH", f"/v1/builds/{BUILD_ID}", {
+              "data": {
+                  "type": "builds",
+                  "id": BUILD_ID,
+                  "attributes": {"usesNonExemptEncryption": False},
+              }
+          })
+
+          print("Set App Store version metadata")
+          request("PATCH", f"/v1/appStoreVersions/{VERSION_ID}", {
+              "data": {
+                  "type": "appStoreVersions",
+                  "id": VERSION_ID,
+                  "attributes": {"copyright": "2026 Tokyo Nasu"},
+              }
+          })
+          request("PATCH", f"/v1/appStoreVersionLocalizations/{LOCALIZATION_ID}", {
+              "data": {
+                  "type": "appStoreVersionLocalizations",
+                  "id": LOCALIZATION_ID,
+                  "attributes": {
+                      "description": "Super Spy Guardは、ホテルや自宅で気になる場所を確認するための防犯チェックアプリです。\n\nカメラの反射チェック、周囲のBluetooth/Wi-Fi機器の確認、音の異常チェック、部屋の点検リストをひとつにまとめました。\n\n主な機能\n- フラッシュ反射チェックでレンズらしい光を探す\n- Bluetooth/Wi-Fi機器を一覧で確認\n- マイク、磁気、光、音のセンサーで周辺をチェック\n- ホテル滞在前の点検ガイド\n- チェック履歴とPDFレポート\n\n本アプリは安全確認の補助ツールです。盗聴器や隠しカメラの発見を保証するものではありません。気になる場合は専門業者への相談も検討してください。",
+                      "keywords": "防犯,盗撮,盗聴,カメラ検知,ホテル,旅行,セキュリティ,WiFi,Bluetooth,チェック",
+                      "supportUrl": "https://github.com/snarfnet/SuperSpyGuard/issues",
+                      "marketingUrl": "https://github.com/snarfnet/SuperSpyGuard",
+                  },
+              }
+          })
+
+          print("Create review detail")
+          request("POST", "/v1/appStoreReviewDetails", {
+              "data": {
+                  "type": "appStoreReviewDetails",
+                  "attributes": {
+                      "demoAccountRequired": False,
+                      "notes": "ログインは不要です。各タブからスキャン、ツール、履歴、チェックリストを確認できます。センサー権限の許可を求められた場合は許可してテストしてください。",
+                  },
+                  "relationships": {
+                      "appStoreVersion": {"data": {"type": "appStoreVersions", "id": VERSION_ID}}
+                  },
+              }
+          }, ok=(201,), optional=True)
+
+          print("Set age rating declaration")
+          none_rating = {
+              "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+              "contests": "NONE",
+              "gambling": False,
+              "gamblingSimulated": "NONE",
+              "horrorOrFearThemes": "NONE",
+              "matureOrSuggestiveThemes": "NONE",
+              "medicalOrTreatmentInformation": "NONE",
+              "profanityOrCrudeHumor": "NONE",
+              "seventeenPlus": False,
+              "sexualContentGraphicAndNudity": "NONE",
+              "sexualContentOrNudity": "NONE",
+              "unrestrictedWebAccess": False,
+              "violenceCartoonOrFantasy": "NONE",
+              "violenceRealistic": "NONE",
+              "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+          }
+          request("PATCH", f"/v1/ageRatingDeclarations/{VERSION_ID}", {
+              "data": {
+                  "type": "ageRatingDeclarations",
+                  "id": VERSION_ID,
+                  "attributes": none_rating,
+              }
+          })
+
+          print("Upload screenshots")
+          upload_screenshot("APP_IPHONE_65", "screenshots/iphone65.png")
+          upload_screenshot("APP_IPAD_PRO_3GEN_129", "screenshots/ipad129.png")
 
           print("Create 500 JPY price schedule")
           request("POST", "/v1/appPriceSchedules", {
@@ -118,6 +319,9 @@ jobs:
                   }
               ],
           }, ok=(201,), optional=True)
+
+          print("Delete empty previous review submission if present")
+          request("DELETE", "/v1/reviewSubmissions/02559e84-1da6-4320-81fe-501005902698", ok=(204,), optional=True)
 
           print("Create review submission")
           submission = request("POST", "/v1/reviewSubmissions", {
