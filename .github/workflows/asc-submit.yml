@@ -312,6 +312,29 @@ jobs:
           }, ok=(201,), optional=True)
 
           print("Set age rating declaration")
+          app_infos = get(
+              f"/v1/apps/{APP_ID}/appInfos",
+              {
+                  "limit": "10",
+                  "include": "ageRatingDeclaration",
+                  "fields[appInfos]": "ageRatingDeclaration",
+                  "fields[ageRatingDeclarations]": "alcoholTobaccoOrDrugUseOrReferences",
+              },
+          )
+          age_rating_id = None
+          for included in app_infos.get("included", []):
+              if included.get("type") == "ageRatingDeclarations":
+                  age_rating_id = included["id"]
+                  break
+          if not age_rating_id:
+              for info in app_infos.get("data", []):
+                  rel = info.get("relationships", {}).get("ageRatingDeclaration", {}).get("data")
+                  if rel:
+                      age_rating_id = rel["id"]
+                      break
+          if not age_rating_id:
+              raise SystemExit("No age rating declaration found")
+
           none_rating = {
               "alcoholTobaccoOrDrugUseOrReferences": "NONE",
               "contests": "NONE",
@@ -328,10 +351,10 @@ jobs:
               "violenceRealistic": "NONE",
               "violenceRealisticProlongedGraphicOrSadistic": "NONE",
           }
-          request("PATCH", f"/v1/ageRatingDeclarations/{VERSION_ID}", {
+          request("PATCH", f"/v1/ageRatingDeclarations/{age_rating_id}", {
               "data": {
                   "type": "ageRatingDeclarations",
-                  "id": VERSION_ID,
+                  "id": age_rating_id,
                   "attributes": none_rating,
               }
           })
