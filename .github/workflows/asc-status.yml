@@ -1,0 +1,122 @@
+name: App Store Connect Status
+
+on:
+  workflow_dispatch:
+
+jobs:
+  status:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Query App Store Connect
+        env:
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install pyjwt requests cryptography -q
+          .venv/bin/python <<'PY'
+          import base64
+          import json
+          import os
+          import time
+          import urllib.parse
+
+          import jwt
+          import requests
+
+          APP_ID = "6777088642"
+          KEY_ID = "WDXGY9WX55"
+          ISSUER_ID = "2be0734f-943a-4d61-9dc9-5d9045c46fec"
+          key = base64.b64decode(os.environ["ASC_API_KEY_BASE64"]).decode("utf-8")
+          token = jwt.encode(
+              {
+                  "iss": ISSUER_ID,
+                  "iat": int(time.time()),
+                  "exp": int(time.time()) + 600,
+                  "aud": "appstoreconnect-v1",
+              },
+              key,
+              algorithm="ES256",
+              headers={"kid": KEY_ID},
+          )
+          session = requests.Session()
+          session.headers.update({"Authorization": f"Bearer {token}"})
+
+          def get(path, params=None):
+              url = "https://api.appstoreconnect.apple.com" + path
+              r = session.get(url, params=params, timeout=30)
+              print(f"\nGET {path} -> {r.status_code}")
+              if not r.ok:
+                  print(r.text[:2000])
+                  return {}
+              return r.json()
+
+          def brief_items(label, payload, fields):
+              print(f"\n{label}")
+              for item in payload.get("data", []):
+                  attrs = item.get("attributes", {})
+                  rels = item.get("relationships", {})
+                  row = {"id": item.get("id"), "type": item.get("type")}
+                  for f in fields:
+                      row[f] = attrs.get(f)
+                  build = rels.get("build", {}).get("data")
+                  if build:
+                      row["buildId"] = build.get("id")
+                  print(json.dumps(row, ensure_ascii=False))
+
+          app = get(f"/v1/apps/{APP_ID}")
+          attrs = app.get("data", {}).get("attributes", {})
+          print("\nAPP")
+          print(json.dumps(
+              {
+                  "id": APP_ID,
+                  "name": attrs.get("name"),
+                  "bundleId": attrs.get("bundleId"),
+                  "sku": attrs.get("sku"),
+                  "primaryLocale": attrs.get("primaryLocale"),
+                  "contentRightsDeclaration": attrs.get("contentRightsDeclaration"),
+              },
+              ensure_ascii=False,
+          ))
+
+          versions = get(
+              f"/v1/apps/{APP_ID}/appStoreVersions",
+              {
+                  "limit": "10",
+                  "sort": "-createdDate",
+                  "include": "build",
+                  "fields[appStoreVersions]": "platform,versionString,appStoreState,appVersionState,releaseType,usesIdfa,createdDate,build",
+                  "fields[builds]": "version,uploadedDate,processingState,expired",
+              },
+          )
+          brief_items("APP STORE VERSIONS", versions, ["platform", "versionString", "appStoreState", "appVersionState", "releaseType", "usesIdfa", "createdDate"])
+
+          builds = get(
+              "/v1/builds",
+              {
+                  "filter[app]": APP_ID,
+                  "limit": "10",
+                  "sort": "-uploadedDate",
+                  "fields[builds]": "version,uploadedDate,processingState,expired,usesNonExemptEncryption",
+              },
+          )
+          brief_items("BUILDS", builds, ["version", "uploadedDate", "processingState", "expired", "usesNonExemptEncryption"])
+
+          submissions = get(
+              "/v1/reviewSubmissions",
+              {
+                  "filter[app]": APP_ID,
+                  "limit": "10",
+                  "sort": "-createdDate",
+                  "fields[reviewSubmissions]": "state,submittedDate,createdDate,platform",
+              },
+          )
+          brief_items("REVIEW SUBMISSIONS", submissions, ["state", "submittedDate", "createdDate", "platform"])
+
+          price = get(f"/v1/apps/{APP_ID}/appPriceSchedule")
+          print("\nPRICE SCHEDULE")
+          if price.get("data"):
+              print(json.dumps(price.get("data"), ensure_ascii=False)[:2000])
+          PY
