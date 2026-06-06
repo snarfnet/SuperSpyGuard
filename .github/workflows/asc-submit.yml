@@ -335,6 +335,10 @@ jobs:
               "data": {
                   "type": "appStoreReviewDetails",
                   "attributes": {
+                      "contactFirstName": "satoshi",
+                      "contactLastName": "amasaki",
+                      "contactEmail": "tokyonasu@yahoo.co.jp",
+                      "contactPhone": "+81 80 2368 9194",
                       "demoAccountRequired": False,
                       "notes": "ログインは不要です。各タブからスキャン、ツール、履歴、チェックリストを確認できます。センサー権限の許可を求められた場合は許可してテストしてください。",
                   },
@@ -350,6 +354,10 @@ jobs:
                       "type": "appStoreReviewDetails",
                       "id": review_detail["data"]["id"],
                       "attributes": {
+                          "contactFirstName": "satoshi",
+                          "contactLastName": "amasaki",
+                          "contactEmail": "tokyonasu@yahoo.co.jp",
+                          "contactPhone": "+81 80 2368 9194",
                           "demoAccountRequired": False,
                           "notes": "ログインは不要です。各タブからスキャン、ツール、履歴、チェックリストを確認できます。センサー権限の許可を求められた場合は許可してテストしてください。",
                       },
