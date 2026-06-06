@@ -24,8 +24,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p screenshots
-          python3 -m pip install pillow -q
-          python3 <<'PY'
+          python3 -m venv screenshot-venv
+          screenshot-venv/bin/pip install pillow -q
+          screenshot-venv/bin/python <<'PY'
           from pathlib import Path
           from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
