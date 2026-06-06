@@ -1,0 +1,158 @@
+name: Submit to App Review
+
+on:
+  workflow_dispatch:
+
+jobs:
+  submit:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare and submit App Store version
+        env:
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install pyjwt requests cryptography -q
+          .venv/bin/python <<'PY'
+          import base64
+          import json
+          import os
+          import time
+
+          import jwt
+          import requests
+
+          APP_ID = "6777088642"
+          VERSION_ID = "7fa5b5b8-eb84-49ca-9e63-7b88fb89554a"
+          BUILD_ID = "29daf476-c0fd-4533-b09e-9dff1cb78815"
+          JPN_500_PRICE_POINT_ID = "eyJzIjoiNjc3NzA4ODY0MiIsInQiOiJKUE4iLCJwIjoiMTAwNDYifQ"
+          KEY_ID = "WDXGY9WX55"
+          ISSUER_ID = "2be0734f-943a-4d61-9dc9-5d9045c46fec"
+
+          key = base64.b64decode(os.environ["ASC_API_KEY_BASE64"]).decode("utf-8")
+          token = jwt.encode(
+              {
+                  "iss": ISSUER_ID,
+                  "iat": int(time.time()),
+                  "exp": int(time.time()) + 600,
+                  "aud": "appstoreconnect-v1",
+              },
+              key,
+              algorithm="ES256",
+              headers={"kid": KEY_ID},
+          )
+          session = requests.Session()
+          session.headers.update({
+              "Authorization": f"Bearer {token}",
+              "Content-Type": "application/json",
+          })
+
+          def request(method, path, body=None, ok=(200, 201, 204), optional=False):
+              url = "https://api.appstoreconnect.apple.com" + path
+              r = session.request(method, url, json=body, timeout=30)
+              print(f"\n{method} {path} -> {r.status_code}")
+              if r.text:
+                  print(r.text[:4000])
+              if r.status_code not in ok and not optional:
+                  raise SystemExit(1)
+              if r.text:
+                  return r.json()
+              return {}
+
+          print("Attach build 107 to version 1.0")
+          request("PATCH", f"/v1/appStoreVersions/{VERSION_ID}/relationships/build", {
+              "data": {"type": "builds", "id": BUILD_ID}
+          }, ok=(200, 204))
+
+          print("Set IDFA and release settings")
+          request("PATCH", f"/v1/appStoreVersions/{VERSION_ID}", {
+              "data": {
+                  "type": "appStoreVersions",
+                  "id": VERSION_ID,
+                  "attributes": {
+                      "usesIdfa": False,
+                      "releaseType": "AFTER_APPROVAL",
+                  },
+              }
+          })
+
+          print("Declare no third-party content rights")
+          request("PATCH", f"/v1/apps/{APP_ID}", {
+              "data": {
+                  "type": "apps",
+                  "id": APP_ID,
+                  "attributes": {
+                      "contentRightsDeclaration": "DOES_NOT_USE_THIRD_PARTY_CONTENT"
+                  },
+              }
+          })
+
+          print("Create 500 JPY price schedule")
+          request("POST", "/v1/appPriceSchedules", {
+              "data": {
+                  "type": "appPriceSchedules",
+                  "relationships": {
+                      "app": {"data": {"type": "apps", "id": APP_ID}},
+                      "baseTerritory": {"data": {"type": "territories", "id": "JPN"}},
+                      "manualPrices": {"data": [{"type": "appPrices", "id": "${price-jpn-500}"}]},
+                  },
+              },
+              "included": [
+                  {
+                      "type": "appPrices",
+                      "id": "${price-jpn-500}",
+                      "attributes": {
+                          "manual": True,
+                          "startDate": None,
+                          "endDate": None,
+                      },
+                      "relationships": {
+                          "appPricePoint": {
+                              "data": {"type": "appPricePoints", "id": JPN_500_PRICE_POINT_ID}
+                          },
+                          "territory": {"data": {"type": "territories", "id": "JPN"}},
+                      },
+                  }
+              ],
+          }, ok=(201,), optional=True)
+
+          print("Create review submission")
+          submission = request("POST", "/v1/reviewSubmissions", {
+              "data": {
+                  "type": "reviewSubmissions",
+                  "attributes": {"platform": "IOS"},
+                  "relationships": {
+                      "app": {"data": {"type": "apps", "id": APP_ID}}
+                  },
+              }
+          }, ok=(201,))
+          submission_id = submission["data"]["id"]
+
+          print("Add app version to review submission")
+          request("POST", "/v1/reviewSubmissionItems", {
+              "data": {
+                  "type": "reviewSubmissionItems",
+                  "relationships": {
+                      "reviewSubmission": {
+                          "data": {"type": "reviewSubmissions", "id": submission_id}
+                      },
+                      "appStoreVersion": {
+                          "data": {"type": "appStoreVersions", "id": VERSION_ID}
+                      },
+                  },
+              }
+          }, ok=(201,))
+
+          print("Submit for review")
+          request("PATCH", f"/v1/reviewSubmissions/{submission_id}", {
+              "data": {
+                  "type": "reviewSubmissions",
+                  "id": submission_id,
+                  "attributes": {"submitted": True},
+              }
+          })
+          print("Submitted for review.")
+          PY
