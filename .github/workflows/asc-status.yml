@@ -85,7 +85,6 @@ jobs:
               f"/v1/apps/{APP_ID}/appStoreVersions",
               {
                   "limit": "10",
-                  "sort": "-createdDate",
                   "include": "build",
                   "fields[appStoreVersions]": "platform,versionString,appStoreState,appVersionState,releaseType,usesIdfa,createdDate,build",
                   "fields[builds]": "version,uploadedDate,processingState,expired",
@@ -109,14 +108,43 @@ jobs:
               {
                   "filter[app]": APP_ID,
                   "limit": "10",
-                  "sort": "-createdDate",
-                  "fields[reviewSubmissions]": "state,submittedDate,createdDate,platform",
+                  "fields[reviewSubmissions]": "state,submittedDate,platform",
               },
           )
-          brief_items("REVIEW SUBMISSIONS", submissions, ["state", "submittedDate", "createdDate", "platform"])
+          brief_items("REVIEW SUBMISSIONS", submissions, ["state", "submittedDate", "platform"])
 
-          price = get(f"/v1/apps/{APP_ID}/appPriceSchedule")
+          price = get(
+              f"/v1/apps/{APP_ID}/appPriceSchedule",
+              {
+                  "include": "baseTerritory,manualPrices,automaticPrices",
+                  "fields[appPriceSchedules]": "baseTerritory,manualPrices,automaticPrices",
+                  "fields[appPrices]": "manual,startDate,endDate,appPricePoint,territory",
+                  "limit[manualPrices]": "50",
+                  "limit[automaticPrices]": "50",
+              },
+          )
           print("\nPRICE SCHEDULE")
           if price.get("data"):
               print(json.dumps(price.get("data"), ensure_ascii=False)[:2000])
+          for included in price.get("included", []):
+              print(json.dumps(included, ensure_ascii=False)[:1000])
+
+          jpn_points = get(
+              f"/v1/apps/{APP_ID}/appPricePoints",
+              {
+                  "filter[territory]": "JPN",
+                  "limit": "200",
+                  "fields[appPricePoints]": "customerPrice,proceeds,territory",
+              },
+          )
+          print("\nJPN PRICE POINTS AROUND 500")
+          for item in jpn_points.get("data", []):
+              attrs = item.get("attributes", {})
+              customer = attrs.get("customerPrice")
+              try:
+                  value = float(customer)
+              except (TypeError, ValueError):
+                  continue
+              if 450 <= value <= 550:
+                  print(json.dumps({"id": item["id"], "customerPrice": customer, "proceeds": attrs.get("proceeds")}, ensure_ascii=False))
           PY
