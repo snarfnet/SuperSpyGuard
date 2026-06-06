@@ -138,6 +138,7 @@ jobs:
           LOCALIZATION_ID = "96a5d76b-55ed-40a5-ae4e-a02db1062454"
           BUILD_ID = "29daf476-c0fd-4533-b09e-9dff1cb78815"
           JPN_500_PRICE_POINT_ID = "eyJzIjoiNjc3NzA4ODY0MiIsInQiOiJKUE4iLCJwIjoiMTAwNDYifQ"
+          PRIVACY_POLICY_URL = "https://github.com/snarfnet/SuperSpyGuard/blob/master/PRIVACY_POLICY.md"
           KEY_ID = "WDXGY9WX55"
           ISSUER_ID = "2be0734f-943a-4d61-9dc9-5d9045c46fec"
 
@@ -204,6 +205,13 @@ jobs:
                       }
                   }, ok=(201,))
                   set_id = created["data"]["id"]
+
+              existing = get(
+                  f"/v1/appScreenshotSets/{set_id}/appScreenshots",
+                  {"limit": "50", "fields[appScreenshots]": "fileName"},
+              )
+              for item in existing.get("data", []):
+                  request("DELETE", f"/v1/appScreenshots/{item['id']}", ok=(204,), optional=True)
 
               path = Path(file_path)
               data = path.read_bytes()
@@ -284,6 +292,31 @@ jobs:
                   "attributes": {"copyright": "2026 Tokyo Nasu"},
               }
           })
+
+          print("Set privacy policy URL")
+          app_infos_for_privacy = get(
+              f"/v1/apps/{APP_ID}/appInfos",
+              {
+                  "limit": "10",
+                  "include": "appInfoLocalizations",
+                  "fields[appInfoLocalizations]": "locale,privacyPolicyUrl",
+              },
+          )
+          app_info_localizations = [
+              item for item in app_infos_for_privacy.get("included", [])
+              if item.get("type") == "appInfoLocalizations"
+          ]
+          if not app_info_localizations:
+              raise SystemExit("No app info localization found")
+          for item in app_info_localizations:
+              request("PATCH", f"/v1/appInfoLocalizations/{item['id']}", {
+                  "data": {
+                      "type": "appInfoLocalizations",
+                      "id": item["id"],
+                      "attributes": {"privacyPolicyUrl": PRIVACY_POLICY_URL},
+                  }
+              })
+
           request("PATCH", f"/v1/appStoreVersionLocalizations/{LOCALIZATION_ID}", {
               "data": {
                   "type": "appStoreVersionLocalizations",
@@ -310,6 +343,18 @@ jobs:
                   },
               }
           }, ok=(201,), optional=True)
+          review_detail = request("GET", f"/v1/appStoreVersions/{VERSION_ID}/appStoreReviewDetail", ok=(200,), optional=True)
+          if review_detail.get("data"):
+              request("PATCH", f"/v1/appStoreReviewDetails/{review_detail['data']['id']}", {
+                  "data": {
+                      "type": "appStoreReviewDetails",
+                      "id": review_detail["data"]["id"],
+                      "attributes": {
+                          "demoAccountRequired": False,
+                          "notes": "ログインは不要です。各タブからスキャン、ツール、履歴、チェックリストを確認できます。センサー権限の許可を求められた場合は許可してテストしてください。",
+                      },
+                  }
+              })
 
           print("Set age rating declaration")
           app_infos = get(
