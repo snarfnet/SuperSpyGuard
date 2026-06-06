@@ -274,7 +274,7 @@ jobs:
                   "id": BUILD_ID,
                   "attributes": {"usesNonExemptEncryption": False},
               }
-          })
+          }, optional=True)
 
           print("Set App Store version metadata")
           request("PATCH", f"/v1/appStoreVersions/{VERSION_ID}", {
