@@ -168,7 +168,7 @@ class BugTransmissionTester: ObservableObject {
         do {
             try engine.start()
             playerNode.play()
-            playerNode.scheduleBuffer(buffer, at: nil)
+            await playerNode.scheduleBuffer(buffer, at: nil)
         } catch {
             return TestResult(testName: name, frequency: "\(Int(frequency))Hz",
                             feedbackLevel: 0, anomalyDetected: false, detail: "再生エラー")
@@ -238,7 +238,7 @@ class BugTransmissionTester: ObservableObject {
         do {
             try engine.start()
             playerNode.play()
-            playerNode.scheduleBuffer(buffer, at: nil)
+            await playerNode.scheduleBuffer(buffer, at: nil)
         } catch {
             return TestResult(testName: "周波数スイープ", frequency: "100-15kHz",
                             feedbackLevel: 0, anomalyDetected: false, detail: "再生エラー")
