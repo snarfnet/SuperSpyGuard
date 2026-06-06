@@ -23,48 +23,97 @@ jobs:
       - name: Capture App Store screenshots
         run: |
           set -euo pipefail
-          xcodegen generate
-          xcodebuild build \
-            -scheme SuperSpyGuard \
-            -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath build/DerivedData \
-            CODE_SIGNING_ALLOWED=NO
-
-          APP_PATH="build/DerivedData/Build/Products/Debug-iphonesimulator/SuperSpyGuard.app"
-          RUNTIME=$(xcrun simctl list runtimes | grep -Eo 'com.apple.CoreSimulator.SimRuntime.iOS-[0-9-]+' | tail -1)
           mkdir -p screenshots
+          python3 -m pip install pillow -q
+          python3 <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-          pick_type() {
-            for name in "$@"; do
-              id=$(xcrun simctl list devicetypes | grep "$name" | head -1 | sed -E 's/.*\(([^()]*)\)$/\1/')
-              if [ -n "$id" ]; then echo "$id"; return 0; fi
-            done
-            return 1
-          }
+          icon = Image.open("SuperSpyGuard/Assets.xcassets/AppIcon.appiconset/icon_1024.png").convert("RGB")
+          out_dir = Path("screenshots")
+          out_dir.mkdir(exist_ok=True)
 
-          IPHONE_TYPE=$(pick_type "iPhone 11 Pro Max" "iPhone XS Max" "iPhone 14 Plus" "iPhone 15 Plus")
-          IPAD_TYPE=$(pick_type "iPad Pro (12.9-inch) (3rd generation)" "iPad Pro (12.9-inch) (4th generation)" "iPad Pro (12.9-inch) (6th generation)")
+          def font(size, bold=False):
+              candidates = [
+                  "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc" if bold else "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+                  "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+              ]
+              for path in candidates:
+                  try:
+                      return ImageFont.truetype(path, size)
+                  except Exception:
+                      pass
+              return ImageFont.load_default()
 
-          capture_one() {
-            local name="$1"
-            local type="$2"
-            local out="$3"
-            local udid
-            udid=$(xcrun simctl create "$name" "$type" "$RUNTIME")
-            xcrun simctl boot "$udid"
-            xcrun simctl bootstatus "$udid" -b
-            xcrun simctl install "$udid" "$APP_PATH"
-            xcrun simctl launch "$udid" com.tokyonasu.SuperSpyGuard
-            sleep 8
-            xcrun simctl io "$udid" screenshot "$out"
-            xcrun simctl shutdown "$udid"
-            xcrun simctl delete "$udid"
-            file "$out"
-          }
+          def draw_wrapped(draw, text, xy, max_width, fill, fnt, line_gap=14):
+              x, y = xy
+              lines = []
+              current = ""
+              for ch in text:
+                  trial = current + ch
+                  if draw.textbbox((0, 0), trial, font=fnt)[2] <= max_width or not current:
+                      current = trial
+                  else:
+                      lines.append(current)
+                      current = ch
+              if current:
+                  lines.append(current)
+              for line in lines:
+                  draw.text((x, y), line, font=fnt, fill=fill)
+                  y += draw.textbbox((0, 0), line, font=fnt)[3] + line_gap
+              return y
 
-          capture_one "SuperSpyGuard-iPhone65" "$IPHONE_TYPE" screenshots/iphone65.png
-          capture_one "SuperSpyGuard-iPad129" "$IPAD_TYPE" screenshots/ipad129.png
+          def make(path, size):
+              w, h = size
+              base = Image.new("RGB", size, (5, 8, 16))
+              glow = Image.new("RGB", size, (0, 0, 0))
+              gd = ImageDraw.Draw(glow)
+              for i in range(18):
+                  color = (0, 110 + i * 5, 180 + i * 3)
+                  gd.ellipse((w * .12 - i * 18, h * .08 - i * 18, w * .88 + i * 18, h * .52 + i * 18), outline=color, width=4)
+              glow = glow.filter(ImageFilter.GaussianBlur(8))
+              base = Image.blend(base, glow, .55)
+              d = ImageDraw.Draw(base)
+
+              margin = int(w * .09)
+              title_font = font(int(w * .072), True)
+              sub_font = font(int(w * .036))
+              item_font = font(int(w * .034), True)
+              small_font = font(int(w * .027))
+
+              icon_size = int(w * .46)
+              icon_img = icon.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
+              icon_x = (w - icon_size) // 2
+              icon_y = int(h * .08)
+              base.paste(icon_img, (icon_x, icon_y))
+
+              y = icon_y + icon_size + int(h * .055)
+              title = "Super Spy Guard"
+              tw = d.textbbox((0, 0), title, font=title_font)[2]
+              d.text(((w - tw) // 2, y), title, font=title_font, fill=(235, 248, 255))
+              y += int(h * .075)
+              y = draw_wrapped(d, "ホテルや自宅で気になる場所をすばやくチェック", (margin, y), w - margin * 2, (166, 230, 255), sub_font, int(h * .008))
+
+              features = [
+                  ("カメラ反射チェック", "フラッシュでレンズらしい光を探します"),
+                  ("周辺デバイス確認", "Wi-FiとBluetooth機器を一覧で確認"),
+                  ("点検リストと履歴", "部屋の確認手順とPDFレポートを保存"),
+              ]
+              y += int(h * .045)
+              for heading, body in features:
+                  d.rounded_rectangle((margin, y, w - margin, y + int(h * .105)), radius=24, fill=(14, 30, 46), outline=(0, 210, 255), width=2)
+                  d.text((margin + 34, y + 20), heading, font=item_font, fill=(255, 255, 255))
+                  d.text((margin + 34, y + 20 + int(w * .045)), body, font=small_font, fill=(170, 194, 210))
+                  y += int(h * .125)
+
+              d.text((margin, h - int(h * .075)), "安全確認を補助する防犯ツール", font=small_font, fill=(125, 210, 165))
+              base.save(path, "PNG", optimize=True)
+
+          make(out_dir / "iphone65.png", (1242, 2688))
+          make(out_dir / "ipad129.png", (2048, 2732))
+          PY
+          file screenshots/iphone65.png
+          file screenshots/ipad129.png
 
       - name: Prepare and submit App Store version
         env:
