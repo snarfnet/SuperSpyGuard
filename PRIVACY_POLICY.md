@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: June 6, 2026
+Last updated: June 8, 2026
 
 Super Spy Guard helps users check rooms and nearby devices for safety. The app does not require an account.
 
@@ -24,6 +24,6 @@ The app does not sell personal data. The app does not share personal data with a
 
 ## Contact
 
-For questions, contact us through GitHub Issues:
+For support, use the Super Spy Guard support page:
 
-https://github.com/snarfnet/SuperSpyGuard/issues
+https://snarfnet.github.io/SuperSpyGuard/support.html

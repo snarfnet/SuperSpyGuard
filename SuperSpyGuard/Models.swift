@@ -94,7 +94,7 @@ enum ThreatLevel: Int, Comparable, Codable {
     var label: String {
         switch self {
         case .safe:   return "安全"
-        case .low:    return "低"
+        case .low:    return "要確認"
         case .medium: return "注意"
         case .high:   return "危険"
         }
@@ -103,7 +103,7 @@ enum ThreatLevel: Int, Comparable, Codable {
     var labelEn: String {
         switch self {
         case .safe:   return "SAFE"
-        case .low:    return "LOW"
+        case .low:    return "CHECK"
         case .medium: return "CAUTION"
         case .high:   return "DANGER"
         }

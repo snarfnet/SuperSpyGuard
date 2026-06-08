@@ -27,6 +27,9 @@ struct ResultsView: View {
                         Text(coordinator.overallThreatLevel.label)
                             .font(.system(size: 28, weight: .black, design: .monospaced))
                             .foregroundStyle(coordinator.overallThreatLevel.color)
+                        Text(resultSubtitle)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(coordinator.overallThreatLevel.color.opacity(0.9))
                         Text(coordinator.threatSummary)
                             .font(AppTheme.bodyFont)
                             .foregroundStyle(AppTheme.textSecondary)
@@ -134,9 +137,18 @@ struct ResultsView: View {
     private var threatIcon: String {
         switch coordinator.overallThreatLevel {
         case .safe:   return "shield.checkered"
-        case .low:    return "shield.lefthalf.filled"
+        case .low:    return "checkmark.shield.fill"
         case .medium: return "exclamationmark.shield.fill"
         case .high:   return "xmark.shield.fill"
+        }
+    }
+
+    private var resultSubtitle: String {
+        switch coordinator.overallThreatLevel {
+        case .safe:   return "問題なし"
+        case .low:    return "危険ではありません。念のため確認"
+        case .medium: return "確認が必要です"
+        case .high:   return "すぐ確認してください"
         }
     }
 

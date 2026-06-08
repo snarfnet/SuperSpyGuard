@@ -38,9 +38,18 @@ class ScanCoordinator: NSObject, ObservableObject {
     }
 
     var threatSummary: String {
-        let count = detectedItems.filter { $0.threatLevel >= .medium }.count
-        if count == 0 { return "不審なデバイス・信号は検出されませんでした" }
-        return "\(count)件の注意が必要な項目を検出しました"
+        let cautionCount = detectedItems.filter { $0.threatLevel >= .medium }.count
+        let checkCount = detectedItems.filter { $0.threatLevel == .low }.count
+
+        if cautionCount > 0 {
+            return "\(cautionCount)件の注意が必要な項目を検出しました"
+        }
+
+        if checkCount > 0 {
+            return "危険な反応はありません。近い機器や見慣れない機器があるため、念のため目視で確認してください"
+        }
+
+        return "不審なデバイス・信号は検出されませんでした"
     }
 
     func startScan() {

@@ -26,6 +26,10 @@ jobs:
           mkdir -p screenshots
           python3 -m venv screenshot-venv
           screenshot-venv/bin/pip install pillow -q
+          screenshot-venv/bin/python scripts/generate_app_store_screenshots.py
+          file screenshots/iphone65.png
+          file screenshots/ipad129.png
+          exit 0
           screenshot-venv/bin/python <<'PY'
           from pathlib import Path
           from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -138,7 +142,8 @@ jobs:
           LOCALIZATION_ID = "96a5d76b-55ed-40a5-ae4e-a02db1062454"
           BUILD_ID = "29daf476-c0fd-4533-b09e-9dff1cb78815"
           JPN_500_PRICE_POINT_ID = "eyJzIjoiNjc3NzA4ODY0MiIsInQiOiJKUE4iLCJwIjoiMTAwNDYifQ"
-          PRIVACY_POLICY_URL = "https://github.com/snarfnet/SuperSpyGuard/blob/master/PRIVACY_POLICY.md"
+          PRIVACY_POLICY_URL = "https://snarfnet.github.io/SuperSpyGuard/privacy.html"
+          SUPPORT_URL = "https://snarfnet.github.io/SuperSpyGuard/support.html"
           KEY_ID = "WDXGY9WX55"
           ISSUER_ID = "2be0734f-943a-4d61-9dc9-5d9045c46fec"
 
@@ -324,7 +329,7 @@ jobs:
                   "attributes": {
                       "description": "Super Spy Guardは、ホテルや自宅で気になる場所を確認するための防犯チェックアプリです。\n\nカメラの反射チェック、周囲のBluetooth/Wi-Fi機器の確認、音の異常チェック、部屋の点検リストをひとつにまとめました。\n\n主な機能\n- フラッシュ反射チェックでレンズらしい光を探す\n- Bluetooth/Wi-Fi機器を一覧で確認\n- マイク、磁気、光、音のセンサーで周辺をチェック\n- ホテル滞在前の点検ガイド\n- チェック履歴とPDFレポート\n\n本アプリは安全確認の補助ツールです。盗聴器や隠しカメラの発見を保証するものではありません。気になる場合は専門業者への相談も検討してください。",
                       "keywords": "防犯,盗撮,盗聴,カメラ検知,ホテル,旅行,セキュリティ,WiFi,Bluetooth,チェック",
-                      "supportUrl": "https://github.com/snarfnet/SuperSpyGuard/issues",
+                      "supportUrl": SUPPORT_URL,
                       "marketingUrl": "https://github.com/snarfnet/SuperSpyGuard",
                   },
               }
