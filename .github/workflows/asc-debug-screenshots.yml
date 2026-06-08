@@ -74,7 +74,7 @@ jobs:
                   f"/v1/appScreenshotSets/{set_id}/appScreenshots",
                   {
                       "limit": "50",
-                      "fields[appScreenshots]": "fileName,fileSize,uploaded,assetDeliveryState,imageAsset",
+                      "fields[appScreenshots]": "fileName,fileSize,assetDeliveryState,imageAsset",
                   },
               )
 
