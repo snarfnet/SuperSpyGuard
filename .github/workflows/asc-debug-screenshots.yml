@@ -55,7 +55,31 @@ jobs:
 
           get(
               f"/v1/appStoreVersions/{VERSION_ID}",
-              {"fields[appStoreVersions]": "appStoreState,appVersionState,versionString,reviewType,releaseType,usesIdfa"},
+              {
+                  "include": "build,appStoreReviewDetail,appStoreVersionSubmission",
+                  "fields[appStoreVersions]": "appStoreState,appVersionState,versionString,reviewType,releaseType,usesIdfa,build,appStoreReviewDetail,appStoreVersionSubmission",
+                  "fields[builds]": "version,processingState,usesNonExemptEncryption",
+                  "fields[appStoreReviewDetails]": "contactFirstName,contactLastName,contactEmail,contactPhone,demoAccountRequired,notes",
+                  "fields[appStoreVersionSubmissions]": "appStoreVersion",
+              },
+          )
+
+          get(
+              f"/v1/apps/{APP_ID}/reviewSubmissions",
+              {
+                  "limit": "10",
+                  "include": "items,appStoreVersionForReview",
+                  "fields[reviewSubmissions]": "platform,submittedDate,state,items,appStoreVersionForReview",
+                  "fields[reviewSubmissionItems]": "state",
+                  "fields[appStoreVersions]": "versionString,appStoreState,appVersionState",
+              },
+          )
+
+          get(
+              f"/v1/appStoreVersionLocalizations/{LOCALIZATION_ID}",
+              {
+                  "fields[appStoreVersionLocalizations]": "locale,description,keywords,marketingUrl,promotionalText,supportUrl,whatsNew",
+              },
           )
 
           sets = get(
