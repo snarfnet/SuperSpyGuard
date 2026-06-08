@@ -458,35 +458,8 @@ jobs:
               ],
           }, ok=(201,), optional=True)
 
-          print("Delete empty previous review submission if present")
-          request("DELETE", "/v1/reviewSubmissions/02559e84-1da6-4320-81fe-501005902698", ok=(204,), optional=True)
-
-          print("Create review submission")
-          submission = request("POST", "/v1/reviewSubmissions", {
-              "data": {
-                  "type": "reviewSubmissions",
-                  "attributes": {"platform": "IOS"},
-                  "relationships": {
-                      "app": {"data": {"type": "apps", "id": APP_ID}}
-                  },
-              }
-          }, ok=(201,))
-          submission_id = submission["data"]["id"]
-
-          print("Add app version to review submission")
-          request("POST", "/v1/reviewSubmissionItems", {
-              "data": {
-                  "type": "reviewSubmissionItems",
-                  "relationships": {
-                      "reviewSubmission": {
-                          "data": {"type": "reviewSubmissions", "id": submission_id}
-                      },
-                      "appStoreVersion": {
-                          "data": {"type": "appStoreVersions", "id": VERSION_ID}
-                      },
-                  },
-              }
-          }, ok=(201,))
+          submission_id = "ea635183-8be8-4e4d-824a-adf11034dd3a"
+          print("Reuse unresolved review submission")
 
           print("Submit for review")
           request("PATCH", f"/v1/reviewSubmissions/{submission_id}", {
